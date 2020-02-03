@@ -1,6 +1,6 @@
 # Flask Helm Example
 
-This project is to go with the medium article I created, all the steps are in there on how to get setup
+This project is to go with the [medium article](https://medium.com/@lukejpreston/local-kubernetes-development-a14ea8be54d6) I created, all the steps are in there on how to get setup
 
 ## Usage
 
