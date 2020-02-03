@@ -1,0 +1,8 @@
+version: latest
+registry: registry.local:5000/flask-helm-example
+host: false
+tls:
+    enabled: false
+reload: true
+path: /flask-helm-example
+local: /projects/lukejpreston/flask-helm-example/app

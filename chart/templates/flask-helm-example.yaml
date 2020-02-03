@@ -1,0 +1,132 @@
+{{ if .Values.local -}}
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: flask-helm-example-local-storage
+provisioner: kubernetes.io/no-provisioner
+volumeBindingMode: WaitForFirstConsumer
+---
+kind: PersistentVolume
+apiVersion: v1
+metadata:
+  name: flask-helm-example
+spec:
+  accessModes:
+    - ReadWriteOnce
+  capacity:
+    storage: 10Gi
+  persistentVolumeReclaimPolicy: Delete
+  storageClassName: flask-helm-example-local-storage
+  volumeMode: Filesystem
+  persistentVolumeReclaimPolicy: Retain
+  local:
+    path: {{ .Values.local }}
+  nodeAffinity:
+    required:
+      nodeSelectorTerms:
+      - matchExpressions:
+        - key: kubernetes.io/hostname
+          operator: In
+          values:
+          - k3d-k3s-default-worker-0
+          - k3d-k3s-default-worker-1
+---
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: flask-helm-example
+spec:
+  storageClassName: flask-helm-example-local-storage
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 3Gi
+  volumeName: flask-helm-example
+{{ end -}}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: flask-helm-example
+spec:
+  ports:
+  - port: 80
+    targetPort: 80
+  selector:
+    app: flask-helm-example
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: flask-helm-example
+  labels:
+    app: flask-helm-example
+spec:
+  selector:
+    matchLabels:
+      app: flask-helm-example
+  template:
+    metadata:
+      labels:
+        app: flask-helm-example
+    spec:
+      containers:
+      - name: flask-helm-example
+        env:
+        - name: PYTHONUNBUFFERED
+          value: "TRUE"
+        image: {{ .Values.registry }}:{{ .Values.version }}
+        imagePullPolicy: Always
+        command: [
+          "gunicorn",
+          {{ if .Values.reload -}}
+          "--reload",
+          {{ end -}}
+          "--access-logfile",
+          "-",
+          "--timeout",
+          "600",
+          "-w",
+          "4",
+          "-b",
+          "0.0.0.0:80",
+          "app.main"
+        ]
+        ports:
+        - containerPort: 80
+        volumeMounts:
+        {{- if .Values.local }}
+        - mountPath: /usr/app
+          name: flask-helm-example
+        {{- end }}
+      volumes:
+      {{- if .Values.local }}
+      - name: flask-helm-example
+        persistentVolumeClaim:
+          claimName: flask-helm-example
+      {{- end }}
+      imagePullSecrets:
+      - name: gitlab
+---
+apiVersion: networking.k8s.io/v1beta1
+kind: Ingress
+metadata:
+  name: flask-helm-example
+spec:
+  rules:
+  - http:
+      paths:
+      - path: {{ .Values.path }}
+        backend:
+          serviceName: flask-helm-example
+          servicePort: 80
+    {{- if .Values.host }}
+    host: {{ .Values.host }}
+    {{- end -}}
+{{ if .Values.tls.enabled }}
+  tls:
+  - hosts:
+    - {{ .Values.host }}
+    secretName: {{ .Values.tls.certificate }}
+{{ end }}
