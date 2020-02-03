@@ -1,13 +1,14 @@
 # Flask Helm Example
 
-This project is to go with the medium article
+This project is to go with the medium article I created, all the steps are in there on how to get setup
 
 ## Usage
 
-The idea is you have a chart which is for production and some variables for local development
+Assuming you have gotten setup you just need too run the following
 
 ```sh
 docker build . -t flask-helm-example:latest --network host
 docker tag flask-helm-example:latest registry.local:5000/flask-helm-example
 docker push registry.local:5000/flask-helm-example
+helm install flask-helm-example -f devvalues.yaml ./chart
 ```
